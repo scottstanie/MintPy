@@ -148,7 +148,7 @@ We use [Dask](https://www.dask.org) for parallel processing on High Performance 
 
 ```
 mkdir -p ~/.config/dask
-cp $MINTPY_HOME/mintpy/defaults/dask_mintpy.yaml ~/.config/dask/dask_mintpy.yaml
+cp $MINTPY_HOME/mintpy/defaults/dask.yaml ~/.config/dask/dask_mintpy.yaml
 ```
 
 Edit `~/.config/dask/dask_mintpy.yaml` file according to your HPC settings. Currently, only `LSFCluster` job scheduler is tested, `PBSCluster` should also work after minor adjustment in `ifgram_inversion.py`.
