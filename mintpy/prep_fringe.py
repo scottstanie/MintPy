@@ -55,9 +55,9 @@ def create_parser(subparsers=None):
     parser = arg_utils.create_argument_parser(
         name, synopsis=synopsis, description=synopsis, epilog=epilog, subparsers=subparsers)
 
-    parser.add_argument('-u', '--unw-file', dest='unwFile', type=str, default='./PS_DS/unwrap/*.unw',
+    parser.add_argument('-u', '--unw-file', dest='unwFile', type=str, default='./PS_DS/unwrap/*.unw', required=True,
                         help='path pattern of unwrapped interferograms (default: %(default)s).')
-    parser.add_argument('-c', '--coh-file', dest='cohFile', type=str, default='./PS_DS/tcorr_ds_ps.bin',
+    parser.add_argument('-c', '--coh-file', dest='cohFile', type=str, default='./PS_DS/tcorr_ds_ps.bin', required=True,
                         help='temporal coherence file (default: %(default)s).')
     parser.add_argument('--ps-mask', dest='psMaskFile', type=str, default='./ampDispersion/ps_pixels',
                         help='PS pixels file (default: %(default)s).')
@@ -66,7 +66,7 @@ def create_parser(subparsers=None):
                              'This is used to grab 1) bounding box\n'
                              '                 AND 2) geometry source directory where the binary files are.')
 
-    parser.add_argument('-m', '--meta-file', dest='metaFile', type=str, default='../reference/IW*.xml',
+    parser.add_argument('-m', '--meta-file', dest='metaFile', type=str, default='../reference/IW*.xml', required=True,
                         help='metadata file (default: %(default)s).\n'
                              'e.g.: ./reference/IW1.xml        for ISCE/topsStack OR\n'
                              '      ./referenceShelve/data.dat for ISCE/stripmapStack')
@@ -153,15 +153,15 @@ def prepare_metadata(meta_file, geom_src_dir, box=None, nlks_x=1, nlks_y=1):
     meta = isce_utils.extract_isce_metadata(meta_file, update_mode=False)[0]
 
     if 'Y_FIRST' in meta.keys():
-        geom_ext = '.geo.full'
+        geom_exts = ['.geo.full']
     else:
-        geom_ext = '.rdr.full'
+        geom_exts = ['.rdr.full', '.rdr']
 
     # add LAT/LON_REF1/2/3/4, HEADING, A/RLOOKS
     meta = isce_utils.extract_geometry_metadata(geom_src_dir,
                                                 meta=meta,
                                                 box=box,
-                                                fext_list=[geom_ext])
+                                                fext_list=geom_exts)
 
     # apply optional user multilooking
     if nlks_x > 1:
@@ -309,12 +309,12 @@ def prepare_geometry(outfile, geom_dir, box, metadata):
     meta["FILE_TYPE"] = "temporalCoherence"
 
     fDict = {
-        'height'         : os.path.join(geom_dir, 'hgt.rdr.full'),
-        'latitude'       : os.path.join(geom_dir, 'lat.rdr.full'),
-        'longitude'      : os.path.join(geom_dir, 'lon.rdr.full'),
-        'incidenceAngle' : os.path.join(geom_dir, 'los.rdr.full'),
-        'azimuthAngle'   : os.path.join(geom_dir, 'los.rdr.full'),
-        'shadowMask'     : os.path.join(geom_dir, 'shadowMask.rdr.full'),
+        'height'         : os.path.join(geom_dir, 'hgt.rdr'),
+        'latitude'       : os.path.join(geom_dir, 'lat.rdr'),
+        'longitude'      : os.path.join(geom_dir, 'lon.rdr'),
+        'incidenceAngle' : os.path.join(geom_dir, 'los.rdr'),
+        'azimuthAngle'   : os.path.join(geom_dir, 'los.rdr'),
+        'shadowMask'     : os.path.join(geom_dir, 'shadowMask.rdr'),
     }
 
     # initiate dsDict
@@ -340,13 +340,18 @@ def prepare_stack(outfile, unw_file, metadata, processor, baseline_dir=None, box
     unw_files = sorted(glob.glob(unw_file))
     num_pair = len(unw_files)
     print('number of interferograms:', num_pair)
+    from pathlib import Path
+    unw_bases = [Path(f).stem for f in unw_files]
+    unw_dir = os.path.dirname(unw_files[0])
+    cc_files = sorted(glob.glob(os.path.join(unw_dir, '*.conncomp')))
+    cc_bases = [Path(f).stem for f in cc_files]
 
     # get list of *.unw.conncomp file
-    cc_files = [f'{x}.conncomp' for x in unw_files]
-    cc_files = [x for x in cc_files if os.path.isfile(x)]
+    # cc_files = [f'{x}.conncomp' for x in unw_files]
+    # cc_files = [x for x in cc_files if os.path.isfile(x)]
     print(f'number of connected components files: {len(cc_files)}')
 
-    if len(cc_files) != len(unw_files):
+    if len(cc_files) != len(unw_files) and set(cc_bases) != set(unw_bases):
         print('the number of *.unw and *.unw.conncomp files are NOT consistent')
         print('skip creating ifgramStack.h5 file.')
         return
@@ -417,7 +422,7 @@ def main(iargs=None):
 
     # translate input options
     processor = isce_utils.get_processor(inps.metaFile)
-    src_box, geom_src_dir = read_vrt_info(os.path.join(inps.geomDir, 'lat.vrt'))
+    src_box, geom_src_dir = read_vrt_info(os.path.join(inps.geomDir, 'lat.rdr.vrt'))
 
     # metadata
     meta = prepare_metadata(inps.metaFile, geom_src_dir, src_box, nlks_x=inps.lks_x, nlks_y=inps.lks_y)
