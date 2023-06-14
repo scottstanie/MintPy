@@ -81,7 +81,7 @@ def create_parser(subparsers=None):
     interp.add_argument('-i', '--interp', dest='interpMethod', default='nearest', choices={'nearest', 'linear'},
                         help='interpolation/resampling method (default: %(default)s).')
     interp.add_argument('--fill', dest='fillValue', type=float, default=math.nan,
-                        help='Fill value for extrapolation (default: %(default)s).')
+                        help='Fill value for extrapolation (default: %(default)s or 0 for *.int/unw files).')
     interp.add_argument('-n','--nprocs', dest='nprocs', type=int, default=1,
                         help='number of processors to be used for calculation (default: %(default)s).\n'
                              'Note: Do not use more processes than available processor cores.')
@@ -109,6 +109,11 @@ def cmd_line_parse(iargs=None):
     # import
     from mintpy.utils import readfile, utils as ut
 
+    # save argv (to check the manually specified arguments)
+    # use iargs        for python call
+    # use sys.argv[1:] for command line call
+    inps.argv = iargs if iargs else sys.argv[1:]
+
     # check
     if inps.templateFile:
         inps = read_template2inps(inps.templateFile, inps)
@@ -122,12 +127,12 @@ def cmd_line_parse(iargs=None):
 
     # check: --lookup (lookup table existence)
     if not inps.lookupFile:
-        # grab default lookup table
-        inps.lookupFile = ut.get_lookup_file(inps.lookupFile)
-
         # use isce-2 lat/lon.rdr file
         if not inps.lookupFile and inps.latFile:
             inps.lookupFile = inps.latFile
+
+        # grab default lookup table
+        inps.lookupFile = ut.get_lookup_file(inps.lookupFile)
 
         # final check
         if not inps.lookupFile:
@@ -168,6 +173,11 @@ def cmd_line_parse(iargs=None):
         if inps.software == 'scipy':
             print('ERROR: "--geo2radar" is NOT supported for "--software scipy"!')
             sys.exit(0)
+
+    # default: --fill (set default to zero for .int/unw file)
+    fext = os.path.splitext(inps.file[0])[1]
+    if '--fill' not in inps.argv and fext in ['.int', '.unw']:
+        inps.fillValue = 0
 
     return inps
 

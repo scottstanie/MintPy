@@ -1,9 +1,9 @@
+"""Class / utilities for GPS download / operations."""
 ############################################################
 # Program is part of MintPy                                #
 # Copyright (c) 2013, Zhang Yunjun, Heresh Fattahi         #
 # Author: Zhang Yunjun, Jul 2018                           #
 ############################################################
-# Utility scripts for GPS handling
 # Recommend import:
 #     from mintpy.objects.gps import GPS
 
@@ -20,16 +20,31 @@ from pyproj import Geod
 from mintpy.objects.coord import coordinate
 from mintpy.utils import ptime, readfile, time_func, utils1 as ut
 
-unr_site_list_file = 'http://geodesy.unr.edu/NGLStationPages/DataHoldings.txt'
+UNR_SITE_LIST_FILE = 'http://geodesy.unr.edu/NGLStationPages/DataHoldings.txt'
 
 
-def dload_site_list(out_file=None, print_msg=True):
-    """download DataHoldings.txt"""
-    url = unr_site_list_file
+def dload_site_list(out_file=None, url=UNR_SITE_LIST_FILE, print_msg=True):
+    """download DataHoldings.txt.
+
+    Parameters: out_file - str, path to the local file.
+    Returns:    out_file - str, path to the local file.
+                           default: './GPS/DataHoldings.txt'
+    """
+    # output file path
     if not out_file:
-        out_file = os.path.basename(url)
+        out_dir = os.path.abspath('./GPS')
+        out_file = os.path.join(out_dir, os.path.basename(url))
+    else:
+        out_dir = os.path.abspath(os.path.dirname(out_file))
+
+    # output file directory
+    if not os.path.isdir(out_dir):
+        if print_msg:
+            print('create directory:', out_dir)
+        os.makedirs(out_dir)
+
     if print_msg:
-        print(f'downloading site list from UNR Geod Lab: {url}')
+        print(f'downloading site list from UNR Geod Lab: {url} to {os.path.dirname(out_file)}')
     urlretrieve(url, out_file)
     return out_file
 
@@ -47,7 +62,7 @@ def search_gps(SNWE, start_date=None, end_date=None, site_list_file=None, min_nu
     """
     # download site list file if it's not found in current directory
     if site_list_file is None:
-        site_list_file = os.path.basename(unr_site_list_file)
+        site_list_file = os.path.basename(UNR_SITE_LIST_FILE)
 
     if not os.path.isfile(site_list_file):
         dload_site_list(site_list_file, print_msg=print_msg)
@@ -105,7 +120,7 @@ def get_baseline_change(dates1, pos_x1, pos_y1, pos_z1,
 
 
 def get_gps_los_obs(meta, obs_type, site_names, start_date, end_date, gps_comp='enu2los',
-                    horz_az_angle=-90., print_msg=True, redo=False):
+                    horz_az_angle=-90., model=None, print_msg=True, redo=False):
     """Get the GPS LOS observations given the query info.
 
     Parameters: meta          - dict, dictionary of metadata of the InSAR file
@@ -117,6 +132,7 @@ def get_gps_los_obs(meta, obs_type, site_names, start_date, end_date, gps_comp='
                                 e.g. enu2los, hz2los, up2los
                 horz_az_angle - float, azimuth angle of the horizontal motion in degree
                                 measured from the north with anti-clockwise as positive
+                model         - dict, time function model, e.g. {'polynomial': 1, 'periodic': [1.0, 0.5]}
                 print_msg     - bool, print verbose info
                 redo          - bool, ignore existing CSV file and re-calculate
     Returns:    site_obs      - 1D np.ndarray(), GPS LOS velocity or displacement in m or m/yr
@@ -197,7 +213,8 @@ def get_gps_los_obs(meta, obs_type, site_names, start_date, end_date, gps_comp='
                 start_date=start_date,
                 end_date=end_date,
                 gps_comp=gps_comp,
-                horz_az_angle=horz_az_angle)
+                horz_az_angle=horz_az_angle,
+                model=model)
 
             # ignore time-series if the estimated velocity is nan
             dis = np.nan if np.isnan(vel) else dis_ts[-1] - dis_ts[0]
@@ -333,12 +350,12 @@ class GPS:
         self.plot_file_url = os.path.join(url_prefix, f'TimeSeries/{site}.png')
 
         # list of stations from Nevada Geodetic Lab
-        self.site_list_file = os.path.join(os.path.dirname(data_dir), 'DataHoldings.txt')
+        self.site_list_file = os.path.join(data_dir, 'DataHoldings.txt')
         if not os.path.isfile(self.site_list_file):
-            dload_site_list()
+            dload_site_list(self.site_list_file)
         site_names = np.loadtxt(self.site_list_file, dtype=bytes, skiprows=1, usecols=(0)).astype(str)
         if site not in site_names:
-            raise ValueError(f'Site {site} NOT found in file: {unr_site_list_file}')
+            raise ValueError(f'Site {site} NOT found in file: {UNR_SITE_LIST_FILE}')
 
         # directories for data files and plot files
         for fdir in [data_dir, os.path.dirname(self.plot_file)]:
@@ -424,7 +441,7 @@ class GPS:
 
         if display:
             import matplotlib.pyplot as plt
-            fig, ax = plt.subplots(nrows=3, ncols=1, sharex=True)
+            _, ax = plt.subplots(nrows=3, ncols=1, sharex=True)
             ax[0].scatter(self.dates, self.dis_e, s=2**2, label='East')
             ax[1].scatter(self.dates, self.dis_n, s=2**2, label='North')
             ax[2].scatter(self.dates, self.dis_u, s=2**2, label='Up')
@@ -529,9 +546,9 @@ class GPS:
             dates = np.array(sorted(list(set(self.dates) & set(ref_obj.dates))))
             dis = np.zeros(dates.shape, np.float32)
             std = np.zeros(dates.shape, np.float32)
-            for i in range(len(dates)):
-                idx1 = np.where(self.dates == dates[i])[0][0]
-                idx2 = np.where(ref_obj.dates == dates[i])[0][0]
+            for i, date_i in enumerate(dates):
+                idx1 = np.where(self.dates == date_i)[0][0]
+                idx2 = np.where(ref_obj.dates == date_i)[0][0]
                 dis[i] = self.dis_los[idx1] - ref_obj.dis_los[idx2]
                 std[i] = (self.std_los[idx1]**2 + ref_obj.std_los[idx2]**2)**0.5
         else:
@@ -541,7 +558,7 @@ class GPS:
 
 
     def get_gps_los_velocity(self, geom_obj, start_date=None, end_date=None, ref_site=None,
-                             gps_comp='enu2los', horz_az_angle=-90.):
+                             gps_comp='enu2los', horz_az_angle=-90., model=None):
 
         dates, dis = self.read_gps_los_displacement(
             geom_obj,
@@ -565,8 +582,9 @@ class GPS:
                 dis2vel = False
 
         if dis2vel:
+            # specific time_func model
             date_list = [dt.datetime.strftime(i, '%Y%m%d') for i in dates]
-            A = time_func.get_design_matrix4time_func(date_list)
+            A = time_func.get_design_matrix4time_func(date_list, model=model)
             self.velocity = np.dot(np.linalg.pinv(A), dis)[1]
         else:
             self.velocity = np.nan
