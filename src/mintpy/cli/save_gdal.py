@@ -33,6 +33,8 @@ def create_parser(subparsers=None):
     parser.add_argument('--of', '--out-format', '--output-format', dest='out_format', default='GTiff',
                         help='file format as defined by GDAL driver name, e.g. GTiff, ENVI, default: %(default)s\n'
                              'GDAL driver names can be found at https://gdal.org/drivers/raster/index.html')
+    parser.add_argument('-e', '--epsg', dest='epsg', type=int,
+                        help='Manually set the EPSG of the output file. Otherwise, uses input metadata.')
     return parser
 
 

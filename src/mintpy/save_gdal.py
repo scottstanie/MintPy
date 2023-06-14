@@ -95,7 +95,9 @@ def save_gdal(inps):
     )
 
     # epsg
-    if 'EPSG' in atr.keys():
+    if inps.epsg is not None:
+        epsg = inps.epsg
+    elif 'EPSG' in atr.keys():
         epsg = int(atr['EPSG'])
     elif 'UTM_ZONE' in atr.keys():
         epsg = int(ut.utm_zone2epsg_code(atr['UTM_ZONE']))
