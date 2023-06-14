@@ -770,7 +770,7 @@ def run_ifgram_inversion_patch(ifgram_file, box=None, ref_phase=None, obs_ds_nam
 
     ## 2. inversion
 
-    # 2.1 initiale the output matrices
+    # 2.1 initialize the output matrices
     ts = np.zeros((num_date, num_pixel), np.float32)
     ts_cov = np.zeros((num_date, num_date, num_pixel), np.float32) if calc_cov else None
     inv_quality = np.zeros(num_pixel, np.float32)
@@ -802,6 +802,8 @@ def run_ifgram_inversion_patch(ifgram_file, box=None, ref_phase=None, obs_ds_nam
 
         # a. split mask into mask_all/part_net
         # mask for valid (~NaN) observations in ALL ifgrams (share one B in sbas inversion)
+        # SCOTT TESTING
+        np.nan_to_num(stack_obs, copy=False)
         mask_all_net = np.all(~np.isnan(stack_obs), axis=0)
         mask_all_net *= mask
         mask_part_net = mask ^ mask_all_net
