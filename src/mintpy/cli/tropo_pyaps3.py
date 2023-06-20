@@ -90,6 +90,9 @@ def create_parser(subparsers=None):
     parser.add_argument('--hour', type=str, help='time of data in HH, e.g. 12, 06')
     parser.add_argument('-o','--output', dest='cor_dis_file',
                         help='Output file name for trospheric corrected timeseries.')
+    parser.add_argument('--snwe', type=float, nargs=4, metavar=('S', 'N', 'W', 'E'),
+                        help='Manually specify the bounding box of the area of interest '
+                             'in lat/lon degrees, i.e. 32 34 -118 -116')
 
     # delay calculation
     delay = parser.add_argument_group('delay calculation')

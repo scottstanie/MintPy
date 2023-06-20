@@ -102,10 +102,9 @@ def get_grib_info(inps):
         inps.atr = dict()
 
     # area extent for ERA5 grib data download
-    if inps.atr:
-        inps.snwe = get_snwe(inps.atr, geom_file=inps.geom_file)
-    else:
-        inps.snwe = None
+    if inps.snwe is None:
+        if inps.atr:
+            inps.snwe = get_snwe(inps.atr, geom_file=inps.geom_file)
 
     # grib file list
     inps.grib_files = get_grib_filenames(
@@ -402,7 +401,7 @@ def check_pyaps_account_config(tropo_model):
 
 
 ###############################################################
-def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
+def dload_grib_files(grib_files, date_list, tropo_model='ERA5', snwe=None):
     """Download weather re-analysis grib files using PyAPS
     Parameters: grib_files : list of string of grib files
     Returns:    grib_files : list of string
@@ -412,8 +411,13 @@ def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
 
     # Get date list to download (skip already downloaded files)
     grib_files_exist = check_exist_grib_file(grib_files, print_msg=True)
-    grib_files2dload = sorted(list(set(grib_files) - set(grib_files_exist)))
-    date_list2dload = [str(re.findall(r'\d{8}', os.path.basename(i))[0]) for i in grib_files2dload]
+
+    # Get the remaining files, and their dates
+    files_dates = [(f, d) for f, d in zip(grib_files, date_list) if f not in grib_files_exist]
+    grib_files2dload, date_list2dload = zip(*files_dates)
+
+    # grib_files2dload = sorted(list(set(grib_files) - set(grib_files_exist)))
+    # date_list2dload = [str(re.findall(r'\d{8}', os.path.basename(i))[0]) for i in grib_files2dload]
     print('number of grib files to download: %d' % len(date_list2dload))
     print('-'*50)
 
@@ -422,6 +426,8 @@ def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
         hour = re.findall(r'\d{8}[-_]\d{2}', os.path.basename(grib_files2dload[0]))[0].replace('-', '_').split('_')[1]
         grib_dir = os.path.dirname(grib_files2dload[0])
 
+        import ipdb
+        ipdb.set_trace()
         # Check for non-empty account info in PyAPS config file
         check_pyaps_account_config(tropo_model)
 
@@ -444,9 +450,9 @@ def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
 
                 elif tropo_model == 'NARR':
                     pa.NARRdload(date_list2dload, hour, grib_dir)
-            except:
+            except Exception as e:
                 if i < 3:
-                    print(f'WARNING: the {i} attampt to download failed, retry it.\n')
+                    print(f'WARNING: the {i} attampt to download failed, retry it: {e}.\n')
                 else:
                     print('\n\n'+'*'*50)
                     print('WARNING: downloading failed for 3 times, stop trying and continue.')
@@ -661,6 +667,7 @@ def run_tropo_pyaps3(inps):
     else:
         inps.grib_files = dload_grib_files(
             inps.grib_files,
+            date_list=inps.date_list,
             tropo_model=inps.tropo_model,
             snwe=inps.snwe)
 
