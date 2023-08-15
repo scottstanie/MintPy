@@ -426,8 +426,6 @@ def dload_grib_files(grib_files, date_list, tropo_model='ERA5', snwe=None):
         hour = re.findall(r'\d{8}[-_]\d{2}', os.path.basename(grib_files2dload[0]))[0].replace('-', '_').split('_')[1]
         grib_dir = os.path.dirname(grib_files2dload[0])
 
-        import ipdb
-        ipdb.set_trace()
         # Check for non-empty account info in PyAPS config file
         check_pyaps_account_config(tropo_model)
 
