@@ -411,14 +411,14 @@ def dload_grib_files(grib_files, date_list, tropo_model='ERA5', snwe=None):
     print('downloading weather model data using PyAPS ...')
 
     # Get date list to download (skip already downloaded files)
-    grib_files_exist = check_exist_grib_file(grib_files, print_msg=True)
+    existing_grib_files = check_exist_grib_file(grib_files, print_msg=True)
 
     # Get the remaining files, and their dates
-    files_dates = [(f, d) for f, d in zip(grib_files, date_list) if f not in grib_files_exist]
-    grib_files2dload, date_list2dload = zip(*files_dates)
+    files_dates = [(f, d) for f, d in zip(grib_files, date_list) if f not in existing_grib_files]
+    if not files_dates:
+        return existing_grib_files
 
-    # grib_files2dload = sorted(list(set(grib_files) - set(grib_files_exist)))
-    # date_list2dload = [str(re.findall(r'\d{8}', os.path.basename(i))[0]) for i in grib_files2dload]
+    grib_files2dload, date_list2dload = zip(*files_dates)
     print('number of grib files to download: %d' % len(date_list2dload))
     print('-'*50)
 
@@ -676,7 +676,7 @@ def run_tropo_pyaps3(inps):
     if run_or_skip(inps.grib_files, inps.tropo_file, inps.geom_file) == 'run':
         calc_delay_timeseries(inps)
     else:
-        print(f'Skip re-calculating and use existed troposhperic delay HDF5 file: {inps.tropo_file}.')
+        print(f'Skip re-calculating and use existed tropospheric delay HDF5 file: {inps.tropo_file}.')
 
     ## 3. correct tropo delay from displacement time-series (using diff.py)
     if inps.dis_file:
