@@ -964,7 +964,7 @@ def read_attribute(fname, datasetName=None, metafile_ext=None):
                          ...
     Returns:    atr : dict, attributes dictionary
     """
-    fname = os.fspath(fname)  # Convert from possible pathlib.Path
+    fname = str(fname)  # convert from possible Path
     fdir = os.path.dirname(fname)
     fbase, fext = os.path.splitext(os.path.basename(fname))
     fext = fext.lower()
