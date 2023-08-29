@@ -31,7 +31,7 @@ NOTE = """note: Reference value cannot be nan, thus, all selected reference poin
   1) not in deforming areas
   2) not in areas affected by strong atmospheric turbulence, such as ionospheric streaks
   3) close but outside of deforming area of interest with similar elevation, to minimize
-     the spatial correlation effect of atmosspheric delay, especially for shot-wavelength
+     the spatial correlation effect of atmospheric delay, especially for short-wavelength
      deformation (Chaussard et al., 2013; Morales-Rivera et al., 2016)
   4) in high coherent area to minimize the decorrelation effect
 """
