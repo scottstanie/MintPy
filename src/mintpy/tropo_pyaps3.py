@@ -15,7 +15,7 @@ import pyaps3 as pa
 
 import mintpy.cli.diff
 from mintpy.objects import geometry, timeseries
-from mintpy.utils import ptime, readfile, utils as ut, writefile
+from mintpy.utils import ptime, readfile, utils as ut, utils0 as ut0, writefile
 
 WEATHER_MODEL_HOURS = {
     'ERA5'   : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
@@ -75,7 +75,7 @@ def read_inps2date_time(inps):
     # print time info
     if inps.hour is None:
         raise AttributeError('time info (--hour) not found!')
-    print(f'time of cloest available product: {inps.hour}:00 UTC')
+    print(f'time of closest available product: {inps.hour}:00 UTC')
 
     return inps.date_list, inps.hour
 
@@ -267,19 +267,20 @@ def get_bounding_box(meta, geom_file=None):
     length, width = int(meta['LENGTH']), int(meta['WIDTH'])
     if 'Y_FIRST' in meta.keys():
         # geo coordinates
-        lat0 = float(meta['Y_FIRST'])
-        lon0 = float(meta['X_FIRST'])
-        lat_step = float(meta['Y_STEP'])
-        lon_step = float(meta['X_STEP'])
-        lat1 = lat0 + lat_step * (length - 1)
-        lon1 = lon0 + lon_step * (width - 1)
+        y0 = float(meta['Y_FIRST'])
+        x0 = float(meta['X_FIRST'])
+        y_step = float(meta['Y_STEP'])
+        x_step = float(meta['X_STEP'])
+        y1 = y0 + y_step * (length - 1)
+        x1 = x0 + x_step * (width - 1)
 
-        # 'Y_FIRST' not in 'degree'
-        # e.g. meters for UTM projection from ASF HyP3
-        y_unit = meta.get('Y_UNIT', 'degrees').lower()
-        if not y_unit.startswith('deg'):
-            lat0, lon0 = ut.utm2latlon(meta, easting=lon0, northing=lat0)
-            lat1, lon1 = ut.utm2latlon(meta, easting=lon1, northing=lat1)
+        # Check if the bounds are in another projection besides lat/lon
+        epsg = int(meta.get('EPSG', '4326'))
+        if epsg != 4326:
+            lon0, lat0 = ut0.reproject(x0, y0, from_epsg=epsg, to_epsg=4326)
+            lon1, lat1 = ut0.reproject(x1, y1, from_epsg=epsg, to_epsg=4326)
+        else:
+            lon0, lat0, lon1, lat1 = x0, y0, x1, y1
 
     else:
         # radar coordinates
